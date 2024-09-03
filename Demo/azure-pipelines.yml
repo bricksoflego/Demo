@@ -1,0 +1,56 @@
+trigger:
+- Prod
+
+pool:
+  name: 'Default'
+
+variables:
+  - group: 'WebDeploy'
+  - name: buildConfiguration
+    value: 'Release'
+
+steps:
+- task: UseDotNet@2
+  displayName: 'Install .NET Core SDK'
+  inputs:
+    packageType: 'sdk'
+    version: '6.x'
+    installationPath: $(Agent.ToolsDirectory)/dotnet
+
+- task: DotNetCoreCLI@2
+  displayName: 'Restore NuGet Packages'
+  inputs:
+    command: 'restore'
+    projects: '**/*.csproj'
+
+- task: DotNetCoreCLI@2
+  displayName: 'Build Project'
+  inputs:
+    command: 'build'
+    projects: '**/Demo.csproj' # Include only the main project
+    arguments: '--configuration $(buildConfiguration)'
+
+- task: DotNetCoreCLI@2
+  displayName: 'Run Tests'
+  inputs:
+    command: 'test'
+    projects: '**/*Tests/*.csproj'
+    arguments: '--configuration $(buildConfiguration)'
+
+- task: VSTest@3
+  inputs:
+    testSelector: 'testAssemblies'
+    testAssemblyVer2: |
+      **\*test*.dll
+      !**\*TestAdapter.dll
+      !**\obj\**
+    searchFolder: '$(System.DefaultWorkingDirectory)'
+    runOnlyImpactedTests: false
+    
+# - task: MSBuild@1
+#   displayName: 'Deploy using .pubxml Profile'
+#   inputs:
+#     solution: '**/*.csproj'  # Point to your project or solution file
+#     msbuildArguments: '/p:DeployOnBuild=true /p:PublishProfile=IISProfile /p:Password=$(wdp)'
+#     configuration: '$(buildConfiguration)'
+
